@@ -237,6 +237,15 @@ span.button {
   font-size: 0.9rem;
 }
 
+.download-note {
+  flex-basis: 100%;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  border-left: 3px solid var(--accent);
+  padding: 0.5rem 0 0.5rem 0.75rem;
+  margin-top: 0.25rem;
+}
+
 /* Screenshot grid */
 
 .shot-grid {
