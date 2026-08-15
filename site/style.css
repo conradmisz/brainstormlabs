@@ -262,6 +262,27 @@ code {
   margin-bottom: 0.35rem;
 }
 
+.download-note p {
+  margin: 0 0 0.5rem;
+}
+
+.download-note ol {
+  margin: 0 0 0.5rem;
+  padding-left: 1.35rem;
+}
+
+.download-note li {
+  margin-bottom: 0.3rem;
+}
+
+.download-note > :last-child {
+  margin-bottom: 0;
+}
+
+.download-note-alt {
+  color: var(--muted);
+}
+
 /* Screenshot grid */
 
 .shot-grid {

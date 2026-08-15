@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Reactor Drone — Brainstorm Labs</title>
 <meta name="description" content="Reactor Drone: a top-down neon arena survival shooter in C++17/SDL3. Early prototype build.">
-<link rel="stylesheet" href="../style.css?v=2">
+<link rel="stylesheet" href="../style.css?v=3">
 </head>
 <body>
 
@@ -42,17 +42,24 @@
         <span class="download-meta">v2.0.0 &middot; Apple silicon &middot; unsigned app bundle</span>
       </li>
     </ul>
-    <p class="download-note">
-          <strong class="download-note-title">Attention Mac users</strong>
-          You will see &ldquo;Apple could not verify &lsquo;ReactorDrone&rsquo; is free of malware.&rdquo;
-          That is expected, and it is not a warning about the game &mdash; Apple charges
-          $99/yr for the developer certificate that suppresses it, and this build does not
-          have one. To open it: click <strong>Done</strong>, then go to
-          <strong>System Settings &rarr; Privacy &amp; Security</strong>, scroll down, and click
-          <strong>Open Anyway</strong>. Or run
-          <code>xattr -dr com.apple.quarantine ReactorDrone.app</code> in Terminal.
-          Right-click &rarr; Open no longer works on macOS Sequoia and later.
-    </p>
+    <div class="download-note">
+      <strong class="download-note-title">Attention Mac users</strong>
+      <p>macOS will refuse to open this the first time, saying &ldquo;Apple could not verify
+        &lsquo;ReactorDrone&rsquo; is free of malware.&rdquo; That is not a warning about the game
+        &mdash; Apple charges $99/yr for the developer certificate that suppresses it, and this
+        build does not have one.</p>
+      <p>To open it:</p>
+      <ol>
+        <li>Click <strong>Done</strong> on the warning. Do not click Move to Trash.</li>
+        <li>Open <strong>System Settings</strong> &rarr; <strong>Privacy &amp; Security</strong>.</li>
+        <li>Scroll down to the line saying ReactorDrone was blocked, and click
+          <strong>Open Anyway</strong>.</li>
+        <li>Confirm when prompted. The game opens, and you only do this once.</li>
+      </ol>
+      <p class="download-note-alt">Prefer the terminal? Run
+        <code>xattr -dr com.apple.quarantine ReactorDrone.app</code> instead.
+        Right-click &rarr; Open no longer works on macOS Sequoia and later.</p>
+    </div>
     <p class="prose">All three builds are early prototypes. The macOS bundle is not notarized &mdash; see Installing below. A portable Windows zip is also on the <a href="https://github.com/conradmisz/reactor-drone/releases/tag/v2.0.0">release page</a>. Intel Macs are not supported.</p>
   </section>
 
