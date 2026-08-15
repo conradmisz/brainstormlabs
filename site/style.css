@@ -237,6 +237,11 @@ span.button {
   font-size: 0.9rem;
 }
 
+code {
+  font-size: 0.9em;
+  word-break: break-word;
+}
+
 .download-note {
   flex-basis: 100%;
   font-size: 0.9rem;
