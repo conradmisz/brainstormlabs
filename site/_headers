@@ -1,0 +1,6 @@
+# The HTML is served no-cache but style.css defaults to a 4-hour browser cache,
+# so a deploy can leave visitors on new markup with old CSS. Revalidate it every
+# time — with an ETag that is a 304, not a re-download. Remove this if the site
+# ever gains a build step that content-hashes filenames.
+/style.css
+  Cache-Control: public, max-age=0, must-revalidate
