@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reactor Drone — Brainstorm Labs</title>
+<meta name="description" content="Reactor Drone: a top-down neon arena survival shooter in C++17/SDL3. Early prototype build.">
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+<div class="wrap wrap-narrow">
+  <header class="site-header">
+    <a class="wordmark" href="/">Brainstorm Labs</a>
+    <nav class="site-nav">
+      <ul>
+        <li><a href="/#projects">Projects</a></li>
+        <li><a href="/#contact">Contact</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <section id="hero">
+    <h1>Reactor Drone</h1>
+    <p class="subtitle">Early prototype build</p>
+    <p class="prose">A top-down neon arena survival shooter built in C++17 and SDL3 on a hand-rolled ECS engine. You fly a maintenance drone inside a reactor, mouse-aiming against ring-spawned waves, banking credits from loot and spending them between waves on permanent upgrades. A 50-wave run spans nine arenas across four themes — Core, Foundry, Bio-lab, and Prism — ending in Singularity, a black-hole map the final boss transforms the arena into. Bosses appear every 10 waves, themed per arena; killing one grants a choice of three active abilities. Two difficulties are available.</p>
+  </section>
+
+  <section id="download">
+    <h2>Download</h2>
+    <!-- to activate a platform: swap its <span class=button...> for
+         <a class="button" href="https://dl.thebrainstormlabs.com/FILENAME"> -->
+    <ul class="download-list">
+      <li>
+        <span class="button" role="button" aria-disabled="true">Windows</span>
+        <span class="download-meta">Coming soon &middot; Windows 10/11, 64-bit &middot; installer, ~30 MB</span>
+      </li>
+      <li>
+        <span class="button" role="button" aria-disabled="true">Linux</span>
+        <span class="download-meta">Coming soon &middot; x86-64 &middot; portable archive</span>
+      </li>
+      <li>
+        <span class="button" role="button" aria-disabled="true">macOS</span>
+        <span class="download-meta">Coming soon &middot; Apple silicon &middot; unsigned app bundle</span>
+      </li>
+    </ul>
+    <p class="prose">All three builds are early prototypes and are being prepared now. Windows is furthest along; Linux and macOS follow. Check back soon.</p>
+  </section>
+
+  <section id="mailing-list">
+    <h2>Get told when it ships</h2>
+    <p class="prose">One mail per release. Nothing else, and every mail carries an unsubscribe link.</p>
+    <form class="signup" id="signup" novalidate>
+      <label class="visually-hidden" for="signup-email">Email address</label>
+      <input id="signup-email" name="email" type="email" required autocomplete="email"
+             placeholder="you@example.com" spellcheck="false">
+      <button class="button" type="submit">Notify me</button>
+      <p class="signup-msg" id="signup-msg" role="status" aria-live="polite"></p>
+    </form>
+    <script>
+      // No build step here on purpose: one fetch to the game's existing Worker.
+      document.getElementById('signup').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const form = e.currentTarget;
+        const msg = document.getElementById('signup-msg');
+        const email = form.email.value.trim();
+        if (!form.email.checkValidity() || !email) {
+          msg.textContent = 'That does not look like an email address.';
+          return;
+        }
+        form.querySelector('button').disabled = true;
+        msg.textContent = 'Sending…';
+        try {
+          const r = await fetch('https://reactor-drone-api.conradmiszczak.workers.dev/subscribe', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ email, source: 'web' })
+          });
+          if (!r.ok) throw new Error(r.status);
+          form.reset();
+          msg.textContent = 'Done — you are on the list.';
+        } catch {
+          msg.textContent = 'That did not go through. Try again in a moment.';
+        } finally {
+          form.querySelector('button').disabled = false;
+        }
+      });
+    </script>
+  </section>
+
+  <section id="screenshots">
+    <h2>Screenshots</h2>
+    <div class="shot-grid">
+      <img src="../img/shot-1.png" alt="The drone firing into an early wave of enemy drones in the Core arena">
+      <img src="../img/shot-2.png" alt="A close dogfight at 24% hull in the Core arena">
+      <img src="../img/shot-3.png" alt="Enemy drones converging across the Core arena grid">
+      <img src="../img/shot-4.png" alt="A different wave layout with tracer fire crossing the arena">
+    </div>
+  </section>
+
+  <section id="how-to-play">
+    <h2>How to play</h2>
+    <p class="prose">Each run spawns waves of enemies in rings around the arena. Between waves an upgrade panel opens, with a full shop appearing every fifth wave, covering eight upgrade lines: hull, shields, thrusters, fire rate, damage, extra shots, projectile range, and ricochet. Score accumulates across runs and unlocks new ships. Runs can be saved from the pause menu.</p>
+    <table class="controls">
+      <tbody>
+        <tr><th scope="row">Arrows / WASD</th><td>Move</td></tr>
+        <tr><th scope="row">Mouse</th><td>Aim (hold to fire)</td></tr>
+        <tr><th scope="row">Space</th><td>Thruster dash, damages what you pass through, 10s cooldown</td></tr>
+        <tr><th scope="row">ESC</th><td>Pause</td></tr>
+        <tr><th scope="row">1&ndash;8</th><td>Buy / equip in shop</td></tr>
+        <tr><th scope="row">TAB / B</th><td>Change shop page / launch</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="installing">
+    <h2>Installing</h2>
+    <ol class="prose">
+      <li>Download the installer and run it.</li>
+      <li>Because the installer is unsigned, Windows SmartScreen may warn you — click "More info", then "Run anyway".</li>
+      <li>The game installs to Program Files with a Start-menu shortcut.</li>
+      <li>Uninstall from Windows Settings &rarr; Apps.</li>
+    </ol>
+  </section>
+
+  <section id="requirements">
+    <h2>System requirements</h2>
+    <ul class="prose">
+      <li>Windows 10/11, 64-bit</li>
+      <li>Any modern GPU</li>
+      <li>~60 MB disk space</li>
+      <li>Keyboard and mouse</li>
+    </ul>
+  </section>
+
+  <footer class="site-footer">
+    <p>Reactor Drone is an early prototype &mdash; expect rough edges and provisional balance. &copy; 2026 Brainstorm Labs.</p>
+  </footer>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,348 @@
+/* Brainstorm Labs — shared stylesheet */
+
+:root {
+  --bg: #fafaf8;
+  --text: #111;
+  --accent: #c2410c;
+  --border: #ddd;
+  --muted: #666;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 18px;
+  line-height: 1.6;
+}
+
+a {
+  color: var(--accent);
+}
+
+a:hover {
+  text-decoration: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+  border: 1px solid var(--border);
+}
+
+.wrap {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+.wrap-narrow {
+  max-width: 56rem;
+}
+
+.prose {
+  max-width: 65ch;
+}
+
+/* Banner strip */
+
+.banner {
+  display: block;
+  background: var(--accent);
+  color: #fff;
+  text-align: center;
+  padding: 0.6rem 1rem;
+  font-size: 0.95rem;
+  text-decoration: none;
+}
+
+.banner:hover {
+  text-decoration: underline;
+}
+
+/* Header */
+
+header.site-header {
+  padding: 2rem 0 1rem;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.wordmark {
+  font-size: 1.25rem;
+  font-weight: 700;
+  text-decoration: none;
+  color: var(--text);
+}
+
+nav.site-nav ul {
+  list-style: none;
+  display: flex;
+  gap: 1.5rem;
+  margin: 0;
+  padding: 0;
+}
+
+nav.site-nav a {
+  text-decoration: none;
+  color: var(--text);
+}
+
+nav.site-nav a:hover {
+  color: var(--accent);
+}
+
+/* Sections */
+
+section {
+  padding: 2.5rem 0;
+  border-top: 1px solid var(--border);
+}
+
+section:first-of-type {
+  border-top: none;
+}
+
+h1 {
+  font-size: 2.5rem;
+  line-height: 1.15;
+  margin: 0 0 0.5rem;
+}
+
+h2 {
+  font-size: 1.5rem;
+  margin: 0 0 1.25rem;
+}
+
+.subtitle {
+  color: var(--muted);
+  font-size: 1.1rem;
+  margin: 0 0 1rem;
+}
+
+/* Project grid */
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 420px));
+  gap: 1.5rem;
+}
+
+.card {
+  display: block;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  text-decoration: none;
+  color: var(--text);
+}
+
+.card img {
+  border: none;
+  border-bottom: 1px solid var(--border);
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  object-fit: contain;
+  background: #f0f0ee;
+}
+
+.card-body {
+  padding: 1rem;
+}
+
+.card-body h3 {
+  margin: 0 0 0.4rem;
+  font-size: 1.1rem;
+}
+
+.card-body p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+/* Contact list */
+
+.contact-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.contact-list li {
+  padding: 0.4rem 0;
+}
+
+/* Buttons */
+
+.button {
+  display: inline-block;
+  background: var(--accent);
+  color: #fff;
+  text-decoration: none;
+  padding: 0.75rem 1.25rem;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.button:hover {
+  opacity: 0.9;
+}
+
+.button[disabled],
+span.button {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  cursor: not-allowed;
+}
+
+.download-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.5rem;
+}
+
+.download-list li {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0;
+}
+
+.download-list .button {
+  min-width: 9rem;
+  text-align: center;
+}
+
+.download-meta {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* Screenshot grid */
+
+.shot-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .shot-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.shot-grid img {
+  aspect-ratio: 3 / 2; /* matches the 980x660 captures — no HUD crop */
+  width: 100%;
+  object-fit: cover;
+}
+
+/* Controls table */
+
+table.controls {
+  border-collapse: collapse;
+  width: 100%;
+  max-width: 40rem;
+}
+
+table.controls th,
+table.controls td {
+  border: 1px solid var(--border);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+
+/* Footer */
+
+footer.site-footer {
+  border-top: 1px solid var(--border);
+  padding: 2rem 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 480px) {
+  h1 {
+    font-size: 2rem;
+  }
+}
+
+.signup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  max-width: 34rem;
+}
+
+.signup input {
+  flex: 1 1 16rem;
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+}
+
+.signup input:focus-visible,
+.signup button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.signup button {
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+
+/* Overrides the shared .button[disabled] "unavailable" look — a signup button
+   mid-request is busy, not disabled forever. */
+.signup button[disabled] {
+  background: var(--accent);
+  color: #fff;
+  border: 0;
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.signup-msg {
+  flex: 1 0 100%;
+  margin: 0;
+  min-height: 1.6em;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* Label kept for screen readers; the placeholder carries the visual cue. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
