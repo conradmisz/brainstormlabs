@@ -42,7 +42,7 @@
         <span class="download-meta">v2.0.0 &middot; Apple silicon &middot; unsigned app bundle</span>
       </li>
     </ul>
-    <p class="prose">All three builds are early prototypes. The macOS bundle is unsigned &mdash; right-click and choose Open the first time. A portable Windows zip is also on the <a href="https://github.com/conradmisz/reactor-drone/releases/tag/v2.0.0">release page</a>. Intel Macs are not supported.</p>
+    <p class="prose">All three builds are early prototypes. The macOS bundle is not notarized &mdash; see Installing below. A portable Windows zip is also on the <a href="https://github.com/conradmisz/reactor-drone/releases/tag/v2.0.0">release page</a>. Intel Macs are not supported.</p>
   </section>
 
   <section id="mailing-list">
@@ -113,12 +113,11 @@
 
   <section id="installing">
     <h2>Installing</h2>
-    <ol class="prose">
-      <li>Download the installer and run it.</li>
-      <li>Because the installer is unsigned, Windows SmartScreen may warn you — click "More info", then "Run anyway".</li>
-      <li>The game installs to Program Files with a Start-menu shortcut.</li>
-      <li>Uninstall from Windows Settings &rarr; Apps.</li>
-    </ol>
+    <ul class="prose">
+      <li><strong>Windows</strong> &mdash; run the installer. It is unsigned, so SmartScreen may warn you: click "More info", then "Run anyway". Installs to Program Files with a Start-menu shortcut; uninstall from Settings &rarr; Apps.</li>
+      <li><strong>macOS</strong> &mdash; unzip and drag ReactorDrone.app to Applications. It is not notarized, so the first launch is blocked. Click <strong>Done</strong> on the warning, then open <strong>System Settings &rarr; Privacy &amp; Security</strong>, scroll down, and click <strong>Open Anyway</strong>. Right-click &rarr; Open no longer works on macOS Sequoia and later.</li>
+      <li><strong>Linux</strong> &mdash; extract the tarball and run <code>./run.sh</code>.</li>
+    </ul>
   </section>
 
   <section id="requirements">
