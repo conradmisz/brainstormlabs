@@ -392,3 +392,9 @@ footer.site-footer {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* Placeholder card for a project with no page yet */
+.card-blank {
+  border-style: dashed;
+  color: var(--muted);
+}
