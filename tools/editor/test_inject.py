@@ -1,8 +1,10 @@
 """Run: python3 tools/editor/test_inject.py"""
 import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
+import serve
 from serve import inject
 
 PAGE = (
@@ -75,6 +77,41 @@ def test_close_before_open_raises():
         assert "intro" in str(e)
     else:
         raise AssertionError("expected ValueError when close precedes open")
+
+
+def test_save_missing_md_raises_and_writes_nothing():
+    """A block missing 'md' must fail before any file is written (all-or-nothing)."""
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        content_dir = tmp / "content"
+        site_dir = tmp / "site"
+        content_dir.mkdir()
+        site_dir.mkdir()
+        (site_dir / "index.html").write_text(
+            "<!--edit:intro-heading--><!--/edit:intro-heading-->"
+            "<!--edit:intro-body--><!--/edit:intro-body-->"
+        )
+        orig_content, orig_site = serve.CONTENT, serve.SITE
+        serve.CONTENT, serve.SITE = content_dir, site_dir
+        try:
+            payload = {
+                "intro-heading": {"md": "PARTIAL-WRITE-PROBE", "html": "<p>h</p>"},
+                "intro-body": {"html": "<p>b</p>"},  # missing "md"
+            }
+            try:
+                serve.save(payload)
+            except KeyError:
+                pass
+            else:
+                raise AssertionError("expected KeyError for a block missing 'md'")
+            assert not (content_dir / "intro-heading.md").exists()
+            assert not (content_dir / "intro-body.md").exists()
+            assert (site_dir / "index.html").read_text() == (
+                "<!--edit:intro-heading--><!--/edit:intro-heading-->"
+                "<!--edit:intro-body--><!--/edit:intro-body-->"
+            )
+        finally:
+            serve.CONTENT, serve.SITE = orig_content, orig_site
 
 
 if __name__ == "__main__":

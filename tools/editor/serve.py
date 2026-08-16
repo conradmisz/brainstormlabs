@@ -68,7 +68,8 @@ def save(payload: dict) -> list[str]:
     if unknown:
         raise ValueError(f"unknown block ids: {', '.join(sorted(unknown))}")
 
-    # Render every page first so a broken marker fails before anything is written.
+    # Validate/render everything first so a broken block fails before anything is written.
+    mds = {block_id: data["md"] for block_id, data in payload.items()}
     pages = {}
     for block_id, data in payload.items():
         page = BLOCKS[block_id][0]
@@ -77,8 +78,8 @@ def save(payload: dict) -> list[str]:
 
     CONTENT.mkdir(exist_ok=True)
     log = []
-    for block_id, data in payload.items():
-        (CONTENT / f"{block_id}.md").write_text(data["md"].rstrip() + "\n")
+    for block_id, md in mds.items():
+        (CONTENT / f"{block_id}.md").write_text(md.rstrip() + "\n")
     for page, html in pages.items():
         (SITE / page).write_text(html)
         log.append(f"wrote site/{page}")
