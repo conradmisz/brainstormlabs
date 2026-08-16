@@ -198,7 +198,17 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if self.path != "/publish":
             self._send(404, "not found")
             return
-        payload = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+            payload = json.loads(self.rfile.read(length))
+            if not isinstance(payload, dict):
+                raise TypeError("request body must be a JSON object")
+        except (TypeError, ValueError) as e:
+            # Nothing has been written to the client yet, so a normal error
+            # response is still possible (and clearer than a stream sentinel).
+            self._send(400, f"bad request: {e}")
+            return
+
         self.send_response(200)
         self.send_header("Content-Type", "text/plain; charset=utf-8")
         self.send_header("Cache-Control", "no-store")
@@ -209,6 +219,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self.wfile.flush()
         except (ValueError, KeyError) as e:
             self.wfile.write(f"NOT PUBLISHED\n{e}\n".encode())
+        except Exception as e:
+            # subprocess.run can raise OSError/FileNotFoundError if git or
+            # wrangler aren't resolvable, plus any other surprise mid-stream.
+            # Headers are already sent, so failure has to be a sentinel line.
+            self.wfile.write(f"FAILED — unexpected error: {e}\n".encode())
 
     def log_message(self, fmt, *args):
         pass  # ponytail: the page shows what happened; the console does not need to

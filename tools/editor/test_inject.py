@@ -1,4 +1,5 @@
 """Run: python3 tools/editor/test_inject.py"""
+import json
 import sys
 import tempfile
 from pathlib import Path
@@ -164,6 +165,79 @@ def test_publish_says_not_live_when_the_site_never_updates():
     text = "\n".join(lines)
     assert "LIVE —" not in text
     assert "still served the old page" in text
+
+
+def _fake_handler(body: bytes):
+    """A serve.Handler instance wired to in-memory rfile/wfile, bypassing real sockets."""
+    import io
+    h = serve.Handler.__new__(serve.Handler)
+    h.rfile = io.BytesIO(body)
+    h.wfile = io.BytesIO()
+    h.headers = {"Content-Length": str(len(body))}
+    h.path = "/publish"
+    h.command = "POST"
+    h.request_version = "HTTP/1.1"
+    h.client_address = ("127.0.0.1", 0)
+    h.requestline = "POST /publish HTTP/1.1"
+    h.close_connection = True
+    return h
+
+
+def test_do_post_reports_failed_sentinel_on_unexpected_exception():
+    """A stray OSError (e.g. git/wrangler missing from PATH) inside publish() must
+    still reach the client as a FAILED line, not kill the request silently."""
+    real_publish = serve.publish
+
+    def boom(payload):
+        yield "Saving files…"
+        raise FileNotFoundError("[Errno 2] No such file or directory: 'git'")
+
+    serve.publish = boom
+    try:
+        h = _fake_handler(json.dumps({"intro-heading": {"md": "x", "html": "<h1>x</h1>"}}).encode())
+        h.do_POST()
+    finally:
+        serve.publish = real_publish
+    out = h.wfile.getvalue().decode()
+    assert "Saving files" in out
+    assert "FAILED" in out
+    assert "No such file or directory" in out
+
+
+def test_do_post_bad_json_body_gets_clean_400():
+    h = _fake_handler(b"not json")
+    h.do_POST()
+    out = h.wfile.getvalue()
+    assert b"400" in out
+    assert b"bad request" in out
+
+
+def test_do_post_non_dict_body_gets_clean_400():
+    h = _fake_handler(json.dumps([1, 2, 3]).encode())
+    h.do_POST()
+    out = h.wfile.getvalue()
+    assert b"400" in out
+    assert b"bad request" in out
+
+
+def test_do_post_still_reports_not_published_for_validation_errors():
+    """Existing save()-raised ValueError/KeyError must stay distinct from the
+    generic FAILED sentinel."""
+    real_publish = serve.publish
+
+    def rejects(payload):
+        yield "Saving files…"
+        raise ValueError("bad block")
+
+    serve.publish = rejects
+    try:
+        h = _fake_handler(json.dumps({"intro-heading": {"md": "x", "html": "<h1>x</h1>"}}).encode())
+        h.do_POST()
+    finally:
+        serve.publish = real_publish
+    out = h.wfile.getvalue().decode()
+    assert "NOT PUBLISHED" in out
+    assert "FAILED" not in out
 
 
 if __name__ == "__main__":
