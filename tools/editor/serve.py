@@ -62,6 +62,30 @@ def read_blocks() -> dict:
     return out
 
 
+def save(payload: dict) -> list[str]:
+    """Write every block's markdown and inject its html. All or nothing."""
+    unknown = set(payload) - set(BLOCKS)
+    if unknown:
+        raise ValueError(f"unknown block ids: {', '.join(sorted(unknown))}")
+
+    # Render every page first so a broken marker fails before anything is written.
+    pages = {}
+    for block_id, data in payload.items():
+        page = BLOCKS[block_id][0]
+        html = pages.get(page) or (SITE / page).read_text()
+        pages[page] = inject(html, block_id, data["html"])
+
+    CONTENT.mkdir(exist_ok=True)
+    log = []
+    for block_id, data in payload.items():
+        (CONTENT / f"{block_id}.md").write_text(data["md"].rstrip() + "\n")
+    for page, html in pages.items():
+        (SITE / page).write_text(html)
+        log.append(f"wrote site/{page}")
+    log.append(f"wrote {len(payload)} markdown files")
+    return log
+
+
 class Handler(http.server.BaseHTTPRequestHandler):
     def _send(self, code, body, ctype="text/plain; charset=utf-8"):
         if isinstance(body, str):
@@ -91,6 +115,18 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self._send(200, target.read_bytes(), ctype)
         else:
             self._send(404, "not found")
+
+    def do_POST(self):
+        if self.path != "/publish":
+            self._send(404, "not found")
+            return
+        payload = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+        try:
+            log = save(payload)
+        except (ValueError, KeyError) as e:
+            self._send(400, f"NOT PUBLISHED\n{e}")
+            return
+        self._send(200, "\n".join(log))
 
     def log_message(self, fmt, *args):
         pass  # ponytail: the page shows what happened; the console does not need to
