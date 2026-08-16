@@ -23,7 +23,11 @@
   <section id="hero">
     <h1>Reactor Drone</h1>
     <p class="subtitle">Early prototype build</p>
-    <p class="prose">A top-down neon arena survival shooter built in C++17 and SDL3 on a hand-rolled ECS engine. You fly a maintenance drone inside a reactor, mouse-aiming against ring-spawned waves, banking credits from loot and spending them between waves on permanent upgrades. A 50-wave run spans nine arenas across four themes — Core, Foundry, Bio-lab, and Prism — ending in Singularity, a black-hole map the final boss transforms the arena into. Bosses appear every 10 waves, themed per arena; killing one grants a choice of three active abilities. Two difficulties are available.</p>
+    <div class="prose">
+      <!--edit:rd-description-->
+      <p>A top-down neon arena survival shooter built in C++17 and SDL3 on a hand-rolled ECS engine. You fly a maintenance drone inside a reactor, mouse-aiming against ring-spawned waves, banking credits from loot and spending them between waves on permanent upgrades. A 50-wave run spans nine arenas across four themes — Core, Foundry, Bio-lab, and Prism — ending in Singularity, a black-hole map the final boss transforms the arena into. Bosses appear every 10 waves, themed per arena; killing one grants a choice of three active abilities. Two difficulties are available.</p>
+      <!--/edit:rd-description-->
+    </div>
   </section>
 
   <section id="download">
@@ -44,6 +48,7 @@
     </ul>
     <div class="download-note">
       <strong class="download-note-title">Attention Mac users</strong>
+      <!--edit:rd-mac-note-->
       <p>macOS will refuse to open this the first time, saying &ldquo;Apple could not verify
         &lsquo;ReactorDrone&rsquo; is free of malware.&rdquo; That is not a warning about the game
         &mdash; Apple charges $99/yr for the developer certificate that suppresses it, and this
@@ -56,16 +61,25 @@
           <strong>Open Anyway</strong>.</li>
         <li>Confirm when prompted. The game opens, and you only do this once.</li>
       </ol>
-      <p class="download-note-alt">Prefer the terminal? Run
+      <p>Prefer the terminal? Run
         <code>xattr -dr com.apple.quarantine ReactorDrone.app</code> instead.
         Right-click &rarr; Open no longer works on macOS Sequoia and later.</p>
+      <!--/edit:rd-mac-note-->
     </div>
-    <p class="prose">All three builds are early prototypes. The macOS bundle is not notarized &mdash; see Installing below. A portable Windows zip is also on the <a href="https://github.com/conradmisz/reactor-drone/releases/tag/v2.2.0">release page</a>. Intel Macs are not supported.</p>
+    <div class="prose">
+      <!--edit:rd-download-footnote-->
+      <p>All three builds are early prototypes. The macOS bundle is not notarized &mdash; see Installing below. A portable Windows zip is also on the <a href="https://github.com/conradmisz/reactor-drone/releases/tag/v2.2.0">release page</a>. Intel Macs are not supported.</p>
+      <!--/edit:rd-download-footnote-->
+    </div>
   </section>
 
   <section id="mailing-list">
     <h2>Stay up to date</h2>
-    <p class="prose">One mail per release, so you know when there is a new build to grab. Nothing else, and every mail carries an unsubscribe link.</p>
+    <div class="prose">
+      <!--edit:rd-mailing-list-->
+      <p>One mail per release, so you know when there is a new build to grab. Nothing else, and every mail carries an unsubscribe link.</p>
+      <!--/edit:rd-mailing-list-->
+    </div>
     <form class="signup" id="signup" novalidate>
       <label class="visually-hidden" for="signup-email">Email address</label>
       <input id="signup-email" name="email" type="email" required autocomplete="email"
@@ -116,7 +130,11 @@
 
   <section id="how-to-play">
     <h2>How to play</h2>
-    <p class="prose">Each run spawns waves of enemies in rings around the arena. Between waves an upgrade panel opens, with a full shop appearing every fifth wave, covering eight upgrade lines: hull, shields, thrusters, fire rate, damage, extra shots, projectile range, and ricochet. Score accumulates across runs and unlocks new ships. Runs can be saved from the pause menu.</p>
+    <div class="prose">
+      <!--edit:rd-how-to-play-->
+      <p>Each run spawns waves of enemies in rings around the arena. Between waves an upgrade panel opens, with a full shop appearing every fifth wave, covering eight upgrade lines: hull, shields, thrusters, fire rate, damage, extra shots, projectile range, and ricochet. Score accumulates across runs and unlocks new ships. Runs can be saved from the pause menu.</p>
+      <!--/edit:rd-how-to-play-->
+    </div>
     <table class="controls">
       <tbody>
         <tr><th scope="row">Arrows / WASD</th><td>Move</td></tr>
@@ -131,23 +149,31 @@
 
   <section id="installing">
     <h2>Installing</h2>
-    <ul class="prose">
+    <div class="prose">
+      <!--edit:rd-installing-->
+      <ul>
       <li><strong>Windows</strong> &mdash; run the installer. It is unsigned, so SmartScreen may warn you: click "More info", then "Run anyway". Installs to Program Files with a Start-menu shortcut; uninstall from Settings &rarr; Apps.</li>
       <li><strong>macOS</strong> &mdash; unzip and drag ReactorDrone.app to Applications. It is not notarized, so the first launch is blocked. Click <strong>Done</strong> on the warning, then open <strong>System Settings &rarr; Privacy &amp; Security</strong>, scroll down, and click <strong>Open Anyway</strong>. Right-click &rarr; Open no longer works on macOS Sequoia and later.</li>
       <li><strong>Linux</strong> &mdash; extract the tarball and run <code>./run.sh</code>.</li>
-    </ul>
+      </ul>
+      <!--/edit:rd-installing-->
+    </div>
   </section>
 
   <section id="requirements">
     <h2>System requirements</h2>
-    <ul class="prose">
+    <div class="prose">
+      <!--edit:rd-requirements-->
+      <ul>
       <li>Windows 10/11, 64-bit</li>
       <li>macOS 12 or later, Apple silicon</li>
       <li>Linux, x86-64, glibc 2.35 or later</li>
       <li>Any modern GPU</li>
       <li>~60 MB disk space</li>
       <li>Keyboard and mouse</li>
-    </ul>
+      </ul>
+      <!--/edit:rd-requirements-->
+    </div>
   </section>
 
   <footer class="site-footer">
