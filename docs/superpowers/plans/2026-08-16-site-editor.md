@@ -799,75 +799,217 @@ git commit -m "feat(editor): publish writes markdown and injects rendered html"
 
 ---
 
-### Task 6: Commit, push, deploy
+### Task 6: Commit, push, deploy — with live progress
+
+The publish button must tell Conrad what is happening while it happens: that files were
+written, that the change is being pushed to GitHub, that it is deploying, and finally that
+the change is actually live on thebrainstormlabs.com. A single lump of log at the end is
+not acceptable — the run takes 30-120 seconds and a silent page reads as a hang.
 
 **Files:**
 - Modify: `tools/editor/serve.py`
+- Modify: `tools/editor/editor.html`
+- Modify: `tools/editor/test_inject.py`
 
 **Interfaces:**
 - Consumes: `save()`.
-- Produces: `run(cmd: list[str]) -> tuple[int, str]` and `publish(payload: dict) -> tuple[bool, str]`. `POST /publish` now returns the full save+git+deploy log.
+- Produces: `run(cmd: list[str]) -> tuple[int, str]`; `wait_until_live(timeout: int = 120) -> bool`;
+  `publish(payload: dict)` — a GENERATOR yielding log lines as each step completes.
+  `POST /publish` streams those lines to the browser as they are produced.
 
-- [ ] **Step 1: Add `run()` and `publish()` to `serve.py`**
+- [ ] **Step 1: Add `run()`, `wait_until_live()` and the `publish()` generator to `serve.py`**
 
-Add `import subprocess` at the top, then below `save()`:
+Add `import hashlib`, `import subprocess`, `import time`, `import urllib.request` at the top,
+then below `save()`:
 
 ```python
+LIVE_URL = "https://thebrainstormlabs.com/"
+
+
 def run(cmd: list[str]) -> tuple[int, str]:
     p = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
     return p.returncode, (p.stdout + p.stderr).strip()
 
 
-def publish(payload: dict) -> tuple[bool, str]:
-    """Save, commit, push, deploy. Returns (ok, log)."""
-    log = save(payload)
+def wait_until_live(timeout: int = 120) -> bool:
+    """Poll the live site until it serves the index.html we just wrote."""
+    want = hashlib.sha256((SITE / "index.html").read_bytes()).hexdigest()
+    deadline = time.monotonic() + timeout
+    attempt = 0
+    while time.monotonic() < deadline:
+        attempt += 1
+        try:
+            req = urllib.request.Request(
+                f"{LIVE_URL}?_={attempt}", headers={"Cache-Control": "no-cache"}
+            )
+            with urllib.request.urlopen(req, timeout=10) as r:
+                if hashlib.sha256(r.read()).hexdigest() == want:
+                    return True
+        except OSError:
+            pass  # site briefly 5xx-ing mid-deploy is normal; keep polling
+        time.sleep(3)
+    return False
+
+
+def publish(payload: dict):
+    """Save, commit, push, deploy, verify. Yields progress lines as it goes."""
+    yield "Saving files…"
+    for line in save(payload):
+        yield f"  {line}"
 
     code, out = run(["git", "add", "-A", "content", "site"])
     if code:
-        return False, "\n".join(log + ["git add failed:", out])
+        yield f"  git add failed: {out}"
+        yield "FAILED — nothing was committed or deployed"
+        return
 
-    code, out = run(["git", "diff", "--cached", "--quiet"])
-    if code == 0:
-        log.append("nothing to commit — content unchanged")
+    if run(["git", "diff", "--cached", "--quiet"])[0] == 0:
+        yield "Nothing to commit — the copy is unchanged. Deploying anyway."
     else:
+        yield "Committing…"
         code, out = run(["git", "commit", "-m", "content: update site copy"])
-        log.append(out)
+        yield f"  {out}"
         if code:
-            return False, "\n".join(log + ["commit failed — nothing deployed"])
+            yield "FAILED — commit failed, nothing deployed"
+            return
+        yield "Pushing to GitHub…"
         code, out = run(["git", "push"])
-        log.append(out or "pushed")
         if code:
-            log.append("push failed — deploying anyway, push by hand later")
+            yield f"  push failed: {out}"
+            yield "  deploying anyway — push by hand later"
+        else:
+            yield "  pushed to github.com/conradmisz/brainstormlabs"
 
-    log.append("deploying…")
+    yield "Deploying to Cloudflare Pages… (this is the slow bit)"
     code, out = run(["npx", "wrangler", "pages", "deploy", "site/",
                      "--project-name", "brainstormlabs"])
-    log.append(out)
-    return code == 0, "\n".join(log)
+    yield f"  {out}"
+    if code:
+        yield "FAILED — the deploy did not succeed; the commit is still in place"
+        return
+
+    yield "Waiting for the change to go live…"
+    if wait_until_live():
+        yield f"LIVE — {LIVE_URL} is serving your changes now."
+    else:
+        yield (f"Deployed, but {LIVE_URL} still served the old page after 2 minutes. "
+               "That is usually CDN caching — check it again shortly.")
 ```
 
-- [ ] **Step 2: Point the handler at `publish()`**
+Note `wait_until_live` fingerprints `site/index.html` only. That is deliberate: it is the
+page every deploy touches, and hashing the served bytes against the local file is an exact
+check with no parsing. A publish that changes only the Reactor Drone page still reports LIVE
+once the home page's bytes match, which is the right answer — the deploy is atomic.
 
-In `do_POST`, replace the `save(payload)` call:
+- [ ] **Step 2: Stream the log from `do_POST`**
+
+Replace the body of `do_POST` after the payload parse:
 
 ```python
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
         try:
-            ok, log = publish(payload)
+            for line in publish(payload):
+                self.wfile.write((line + "\n").encode())
+                self.wfile.flush()
         except (ValueError, KeyError) as e:
-            self._send(400, f"NOT PUBLISHED\n{e}")
-            return
-        self._send(200 if ok else 500, log)
+            self.wfile.write(f"NOT PUBLISHED\n{e}\n".encode())
 ```
 
-- [ ] **Step 3: Tell the user it takes a moment**
+The response has no `Content-Length` and the server speaks HTTP/1.0, so the browser sees the
+body end when the connection closes. Because the headers go out before the work starts, the
+status is always 200: **the client must read the sentinels in the text**, not the status code.
+`LIVE —` means live, `FAILED` means it stopped, `NOT PUBLISHED` means nothing was written.
 
-In `editor.html`, change the pending message so a 15-second wrangler run does not look like a hang:
+- [ ] **Step 3: Render the stream as it arrives**
+
+In `editor.html`, replace the fetch inside the Publish handler with a streaming read:
 
 ```js
-  log.textContent = 'publishing… (writing files, committing, deploying — ~15s)';
+    const r = await fetch('/publish', { method: 'POST', body: JSON.stringify(payload) });
+    const reader = r.body.getReader();
+    const dec = new TextDecoder();
+    let all = '';
+    log.textContent = '';
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      all += dec.decode(value, { stream: true });
+      log.textContent = all;
+      log.scrollTop = log.scrollHeight;
+    }
+    if (all.includes('LIVE —')) document.querySelectorAll('.dirty').forEach(el => el.classList.remove('dirty'));
 ```
 
-- [ ] **Step 4: Dry-run the git half without deploying**
+Keep the existing `btn.disabled` handling so the button is disabled during the run and
+re-enabled afterwards, on both the success and the failure path.
+
+- [ ] **Step 4: Write the failing test for the progress sequence**
+
+Add to `tools/editor/test_inject.py`, following that file's plain-assert style. It must not
+touch the network, git, or the real files — it stubs `save`, `run`, and `wait_until_live`:
+
+```python
+def _drive_publish(run_results, live=True, saved=("wrote site/index.html",)):
+    """Run publish() with save/run/wait_until_live stubbed. Returns the yielded lines."""
+    calls = []
+    real = (serve.save, serve.run, serve.wait_until_live)
+    serve.save = lambda payload: list(saved)
+    serve.run = lambda cmd: (calls.append(cmd), run_results.pop(0))[1]
+    serve.wait_until_live = lambda *a, **k: live
+    try:
+        return list(serve.publish({"intro-heading": {"md": "x", "html": "<h1>x</h1>"}})), calls
+    finally:
+        serve.save, serve.run, serve.wait_until_live = real
+
+
+def test_publish_reports_each_phase_then_live():
+    lines, calls = _drive_publish([
+        (0, ""),            # git add
+        (1, ""),            # git diff --cached --quiet -> there are changes
+        (0, "[site-editor abc1234] content: update site copy"),  # git commit
+        (0, ""),            # git push
+        (0, "Deployment complete! https://abc.brainstormlabs.pages.dev"),  # wrangler
+    ])
+    text = "\n".join(lines)
+    assert "Saving files" in text
+    assert "Pushing to GitHub" in text
+    assert "pushed to github.com/conradmisz/brainstormlabs" in text
+    assert "Deploying to Cloudflare Pages" in text
+    assert "LIVE —" in text
+    assert lines.index("Pushing to GitHub…") < lines.index("Deploying to Cloudflare Pages… (this is the slow bit)")
+    assert calls[-1][:4] == ["npx", "wrangler", "pages", "deploy"]
+
+
+def test_publish_stops_before_deploy_when_commit_fails():
+    lines, calls = _drive_publish([
+        (0, ""),                       # git add
+        (1, ""),                       # there are changes
+        (1, "nothing to commit, working tree clean"),  # git commit fails
+    ])
+    text = "\n".join(lines)
+    assert "FAILED" in text
+    assert "Deploying to Cloudflare Pages" not in text
+    assert not any(c[0] == "npx" for c in calls)
+
+
+def test_publish_says_not_live_when_the_site_never_updates():
+    lines, _ = _drive_publish([
+        (0, ""), (1, ""), (0, "committed"), (0, ""), (0, "Deployment complete!"),
+    ], live=False)
+    text = "\n".join(lines)
+    assert "LIVE —" not in text
+    assert "still served the old page" in text
+```
+
+- [ ] **Step 5: Run the tests**
+
+Run: `python3 tools/editor/test_inject.py`
+Expected: every test passes, including the three new ones, output pristine.
+
+- [ ] **Step 6: Check the real tooling is reachable without deploying**
 
 ```bash
 python3 - <<'EOF'
@@ -878,13 +1020,14 @@ print(serve.run(["npx", "wrangler", "--version"]))
 EOF
 ```
 
-Expected: a `(0, ...)` tuple from each. If `npx wrangler --version` fails, stop — the deploy step cannot work and that needs sorting before a live publish.
+Expected: a `(0, ...)` tuple from each. If `npx wrangler --version` fails, stop and report —
+the deploy step cannot work and that needs sorting before a live publish.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add tools/editor/serve.py tools/editor/editor.html
-git commit -m "feat(editor): publish commits, pushes, and deploys"
+git add tools/editor/serve.py tools/editor/editor.html tools/editor/test_inject.py
+git commit -m "feat(editor): stream publish progress and confirm the change is live"
 ```
 
 ---
