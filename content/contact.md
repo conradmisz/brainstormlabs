@@ -1,0 +1,2 @@
+- Email: <conrad@thebrainstormlabs.com>
+- GitHub: [github.com/conradmisz](https://github.com/conradmisz)
