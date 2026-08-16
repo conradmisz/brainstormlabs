@@ -114,6 +114,58 @@ def test_save_missing_md_raises_and_writes_nothing():
             serve.CONTENT, serve.SITE = orig_content, orig_site
 
 
+def _drive_publish(run_results, live=True, saved=("wrote site/index.html",)):
+    """Run publish() with save/run/wait_until_live stubbed. Returns the yielded lines."""
+    calls = []
+    real = (serve.save, serve.run, serve.wait_until_live)
+    serve.save = lambda payload: list(saved)
+    serve.run = lambda cmd: (calls.append(cmd), run_results.pop(0))[1]
+    serve.wait_until_live = lambda *a, **k: live
+    try:
+        return list(serve.publish({"intro-heading": {"md": "x", "html": "<h1>x</h1>"}})), calls
+    finally:
+        serve.save, serve.run, serve.wait_until_live = real
+
+
+def test_publish_reports_each_phase_then_live():
+    lines, calls = _drive_publish([
+        (0, ""),            # git add
+        (1, ""),            # git diff --cached --quiet -> there are changes
+        (0, "[site-editor abc1234] content: update site copy"),  # git commit
+        (0, ""),            # git push
+        (0, "Deployment complete! https://abc.brainstormlabs.pages.dev"),  # wrangler
+    ])
+    text = "\n".join(lines)
+    assert "Saving files" in text
+    assert "Pushing to GitHub" in text
+    assert "pushed to github.com/conradmisz/brainstormlabs" in text
+    assert "Deploying to Cloudflare Pages" in text
+    assert "LIVE —" in text
+    assert lines.index("Pushing to GitHub…") < lines.index("Deploying to Cloudflare Pages… (this is the slow bit)")
+    assert calls[-1][:4] == ["npx", "wrangler", "pages", "deploy"]
+
+
+def test_publish_stops_before_deploy_when_commit_fails():
+    lines, calls = _drive_publish([
+        (0, ""),                       # git add
+        (1, ""),                       # there are changes
+        (1, "nothing to commit, working tree clean"),  # git commit fails
+    ])
+    text = "\n".join(lines)
+    assert "FAILED" in text
+    assert "Deploying to Cloudflare Pages" not in text
+    assert not any(c[0] == "npx" for c in calls)
+
+
+def test_publish_says_not_live_when_the_site_never_updates():
+    lines, _ = _drive_publish([
+        (0, ""), (1, ""), (0, "committed"), (0, ""), (0, "Deployment complete!"),
+    ], live=False)
+    text = "\n".join(lines)
+    assert "LIVE —" not in text
+    assert "still served the old page" in text
+
+
 if __name__ == "__main__":
     for name, fn in sorted(globals().items()):
         if name.startswith("test_"):

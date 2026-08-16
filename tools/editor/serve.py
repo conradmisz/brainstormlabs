@@ -4,9 +4,13 @@
 Run:  python3 tools/editor/serve.py
 Then: http://127.0.0.1:8765
 """
+import hashlib
 import http.server
 import json
 import mimetypes
+import subprocess
+import time
+import urllib.request
 import webbrowser
 from pathlib import Path
 
@@ -87,6 +91,79 @@ def save(payload: dict) -> list[str]:
     return log
 
 
+LIVE_URL = "https://thebrainstormlabs.com/"
+
+
+def run(cmd: list[str]) -> tuple[int, str]:
+    p = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
+    return p.returncode, (p.stdout + p.stderr).strip()
+
+
+def wait_until_live(timeout: int = 120) -> bool:
+    """Poll the live site until it serves the index.html we just wrote."""
+    want = hashlib.sha256((SITE / "index.html").read_bytes()).hexdigest()
+    deadline = time.monotonic() + timeout
+    attempt = 0
+    while time.monotonic() < deadline:
+        attempt += 1
+        try:
+            req = urllib.request.Request(
+                f"{LIVE_URL}?_={attempt}", headers={"Cache-Control": "no-cache"}
+            )
+            with urllib.request.urlopen(req, timeout=10) as r:
+                if hashlib.sha256(r.read()).hexdigest() == want:
+                    return True
+        except OSError:
+            pass  # site briefly 5xx-ing mid-deploy is normal; keep polling
+        time.sleep(3)
+    return False
+
+
+def publish(payload: dict):
+    """Save, commit, push, deploy, verify. Yields progress lines as it goes."""
+    yield "Saving files…"
+    for line in save(payload):
+        yield f"  {line}"
+
+    code, out = run(["git", "add", "-A", "content", "site"])
+    if code:
+        yield f"  git add failed: {out}"
+        yield "FAILED — nothing was committed or deployed"
+        return
+
+    if run(["git", "diff", "--cached", "--quiet"])[0] == 0:
+        yield "Nothing to commit — the copy is unchanged. Deploying anyway."
+    else:
+        yield "Committing…"
+        code, out = run(["git", "commit", "-m", "content: update site copy"])
+        yield f"  {out}"
+        if code:
+            yield "FAILED — commit failed, nothing deployed"
+            return
+        yield "Pushing to GitHub…"
+        code, out = run(["git", "push"])
+        if code:
+            yield f"  push failed: {out}"
+            yield "  deploying anyway — push by hand later"
+        else:
+            yield "  pushed to github.com/conradmisz/brainstormlabs"
+
+    yield "Deploying to Cloudflare Pages… (this is the slow bit)"
+    code, out = run(["npx", "wrangler", "pages", "deploy", "site/",
+                     "--project-name", "brainstormlabs"])
+    yield f"  {out}"
+    if code:
+        yield "FAILED — the deploy did not succeed; the commit is still in place"
+        return
+
+    yield "Waiting for the change to go live…"
+    if wait_until_live():
+        yield f"LIVE — {LIVE_URL} is serving your changes now."
+    else:
+        yield (f"Deployed, but {LIVE_URL} still served the old page after 2 minutes. "
+               "That is usually CDN caching — check it again shortly.")
+
+
 class Handler(http.server.BaseHTTPRequestHandler):
     def _send(self, code, body, ctype="text/plain; charset=utf-8"):
         if isinstance(body, str):
@@ -122,12 +199,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self._send(404, "not found")
             return
         payload = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
         try:
-            log = save(payload)
+            for line in publish(payload):
+                self.wfile.write((line + "\n").encode())
+                self.wfile.flush()
         except (ValueError, KeyError) as e:
-            self._send(400, f"NOT PUBLISHED\n{e}")
-            return
-        self._send(200, "\n".join(log))
+            self.wfile.write(f"NOT PUBLISHED\n{e}\n".encode())
 
     def log_message(self, fmt, *args):
         pass  # ponytail: the page shows what happened; the console does not need to
