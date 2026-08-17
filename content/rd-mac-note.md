@@ -1,5 +1,5 @@
-macOS will refuse to open this the first time, saying "Apple could not verify
-'ReactorDrone' is free of malware." That is not a warning about the game — Apple
+macOS will refuse to open this the first time, saying “Apple could not verify
+‘ReactorDrone’ is free of malware.” That is not a warning about the game — Apple
 charges $99/yr for the developer certificate that suppresses it, and this build
 does not have one.
 

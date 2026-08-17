@@ -128,6 +128,56 @@ def _drive_publish(run_results, live=True, saved=("wrote site/index.html",)):
         serve.save, serve.run, serve.wait_until_live = real
 
 
+class _Resp:
+    """Minimal context-manager stand-in for urlopen()'s response object."""
+    def __init__(self, body: bytes):
+        self._body = body
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def read(self):
+        return self._body
+
+
+def test_page_url_for_nested_page_is_a_directory_url():
+    assert serve._page_url("index.html") == "https://thebrainstormlabs.com/"
+    assert serve._page_url("reactor-drone/index.html") == "https://thebrainstormlabs.com/reactor-drone/"
+
+
+def test_wait_until_live_requires_every_page_to_match():
+    """A publish that only edits rd-* blocks must not go LIVE just because
+    site/index.html (untouched) happens to already match the CDN."""
+    with tempfile.TemporaryDirectory() as tmp:
+        site_dir = Path(tmp) / "site"
+        (site_dir / "reactor-drone").mkdir(parents=True)
+        (site_dir / "index.html").write_bytes(b"home")
+        (site_dir / "reactor-drone" / "index.html").write_bytes(b"rd-new")
+
+        orig_site, orig_urlopen = serve.SITE, serve.urllib.request.urlopen
+        serve.SITE = site_dir
+        try:
+            def home_matches_rd_stale(req, timeout=10):
+                body = b"home" if "reactor-drone" not in req.full_url else b"rd-OLD"
+                return _Resp(body)
+
+            def all_match(req, timeout=10):
+                body = b"home" if "reactor-drone" not in req.full_url else b"rd-new"
+                return _Resp(body)
+
+            serve.urllib.request.urlopen = home_matches_rd_stale
+            assert serve.wait_until_live(timeout=1) is False
+
+            serve.urllib.request.urlopen = all_match
+            assert serve.wait_until_live(timeout=1) is True
+        finally:
+            serve.SITE = orig_site
+            serve.urllib.request.urlopen = orig_urlopen
+
+
 def test_publish_reports_each_phase_then_live():
     lines, calls = _drive_publish([
         (0, ""),            # git add
@@ -144,6 +194,19 @@ def test_publish_reports_each_phase_then_live():
     assert "LIVE —" in text
     assert lines.index("Pushing to GitHub…") < lines.index("Deploying to Cloudflare Pages… (this is the slow bit)")
     assert calls[-1][:4] == ["npx", "wrangler", "pages", "deploy"]
+
+
+def test_publish_commits_only_content_and_site_paths():
+    """git commit must not sweep up unrelated pre-staged work under this message."""
+    _, calls = _drive_publish([
+        (0, ""),            # git add
+        (1, ""),            # git diff --cached --quiet -> there are changes
+        (0, "[site-editor abc1234] content: update site copy"),  # git commit
+        (0, ""),            # git push
+        (0, "Deployment complete!"),  # wrangler
+    ])
+    commit_call = next(c for c in calls if c[:2] == ["git", "commit"])
+    assert commit_call[-3:] == ["--", "content", "site"]
 
 
 def test_publish_stops_before_deploy_when_commit_fails():

@@ -61,7 +61,7 @@ def read_blocks() -> dict:
         out[block_id] = {
             "label": label,
             "page": page,
-            "md": md_path.read_text() if md_path.exists() else "",
+            "md": md_path.read_text(encoding="utf-8") if md_path.exists() else "",
         }
     return out
 
@@ -77,15 +77,15 @@ def save(payload: dict) -> list[str]:
     pages = {}
     for block_id, data in payload.items():
         page = BLOCKS[block_id][0]
-        html = pages.get(page) or (SITE / page).read_text()
+        html = pages.get(page) or (SITE / page).read_text(encoding="utf-8")
         pages[page] = inject(html, block_id, data["html"])
 
     CONTENT.mkdir(exist_ok=True)
     log = []
     for block_id, md in mds.items():
-        (CONTENT / f"{block_id}.md").write_text(md.rstrip() + "\n")
+        (CONTENT / f"{block_id}.md").write_text(md.rstrip() + "\n", encoding="utf-8")
     for page, html in pages.items():
-        (SITE / page).write_text(html)
+        (SITE / page).write_text(html, encoding="utf-8")
         log.append(f"wrote site/{page}")
     log.append(f"wrote {len(payload)} markdown files")
     return log
@@ -99,24 +99,36 @@ def run(cmd: list[str]) -> tuple[int, str]:
     return p.returncode, (p.stdout + p.stderr).strip()
 
 
+def _page_url(page: str) -> str:
+    """The live URL for a site/<page> path, e.g. 'reactor-drone/index.html' ->
+    '.../reactor-drone/' (not '.../reactor-drone/index.html')."""
+    if page.endswith("index.html"):
+        page = page[: -len("index.html")]
+    return LIVE_URL + page
+
+
 def wait_until_live(timeout: int = 120) -> bool:
-    """Poll the live site until it serves the index.html we just wrote."""
-    want = hashlib.sha256((SITE / "index.html").read_bytes()).hexdigest()
+    """Poll the live site until every page in BLOCKS serves what we just wrote."""
+    pages = sorted({page for page, _label in BLOCKS.values()})
+    want = {page: hashlib.sha256((SITE / page).read_bytes()).hexdigest() for page in pages}
+    pending = set(pages)
     deadline = time.monotonic() + timeout
     attempt = 0
-    while time.monotonic() < deadline:
+    while time.monotonic() < deadline and pending:
         attempt += 1
-        try:
-            req = urllib.request.Request(
-                f"{LIVE_URL}?_={attempt}", headers={"Cache-Control": "no-cache"}
-            )
-            with urllib.request.urlopen(req, timeout=10) as r:
-                if hashlib.sha256(r.read()).hexdigest() == want:
-                    return True
-        except OSError:
-            pass  # site briefly 5xx-ing mid-deploy is normal; keep polling
-        time.sleep(3)
-    return False
+        for page in list(pending):
+            try:
+                req = urllib.request.Request(
+                    f"{_page_url(page)}?_={attempt}", headers={"Cache-Control": "no-cache"}
+                )
+                with urllib.request.urlopen(req, timeout=10) as r:
+                    if hashlib.sha256(r.read()).hexdigest() == want[page]:
+                        pending.discard(page)
+            except OSError:
+                pass  # site briefly 5xx-ing mid-deploy is normal; keep polling
+        if pending:
+            time.sleep(3)
+    return not pending
 
 
 def publish(payload: dict):
@@ -131,11 +143,12 @@ def publish(payload: dict):
         yield "FAILED — nothing was committed or deployed"
         return
 
-    if run(["git", "diff", "--cached", "--quiet"])[0] == 0:
+    if run(["git", "diff", "--cached", "--quiet", "--", "content", "site"])[0] == 0:
         yield "Nothing to commit — the copy is unchanged. Deploying anyway."
     else:
         yield "Committing…"
-        code, out = run(["git", "commit", "-m", "content: update site copy"])
+        code, out = run(["git", "commit", "-m", "content: update site copy",
+                         "--", "content", "site"])
         yield f"  {out}"
         if code:
             yield "FAILED — commit failed, nothing deployed"

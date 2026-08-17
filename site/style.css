@@ -279,7 +279,7 @@ code {
   margin-bottom: 0;
 }
 
-.download-note p:last-of-type {
+.download-note > p:last-of-type {
   color: var(--muted);
 }
 
