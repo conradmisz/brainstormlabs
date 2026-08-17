@@ -1,2 +1,3 @@
 - Email: <conrad@thebrainstormlabs.com>
 - GitHub: [github.com/conradmisz](https://github.com/conradmisz)
+- LinkedIn: [linkedin.com/in/conradm99](https://www.linkedin.com/in/conradm99)
