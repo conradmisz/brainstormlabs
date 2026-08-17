@@ -115,12 +115,18 @@ def test_save_missing_md_raises_and_writes_nothing():
             serve.CONTENT, serve.SITE = orig_content, orig_site
 
 
-def _drive_publish(run_results, live=True, saved=("wrote site/index.html",)):
-    """Run publish() with save/run/wait_until_live stubbed. Returns the yielded lines."""
+def _drive_publish(run_results, live=True, saved=("wrote site/index.html",), branch="master"):
+    """Run publish() with save/run/wait_until_live stubbed. Returns the yielded lines.
+
+    run_results answers every run() call after the branch probe, which is
+    answered by `branch` (defaulting to the production branch so existing
+    callers still exercise the post-guard path unchanged).
+    """
     calls = []
+    results = [(0, branch)] + list(run_results)
     real = (serve.save, serve.run, serve.wait_until_live)
     serve.save = lambda payload: list(saved)
-    serve.run = lambda cmd: (calls.append(cmd), run_results.pop(0))[1]
+    serve.run = lambda cmd: (calls.append(cmd), results.pop(0))[1]
     serve.wait_until_live = lambda *a, **k: live
     try:
         return list(serve.publish({"intro-heading": {"md": "x", "html": "<h1>x</h1>"}})), calls
@@ -228,6 +234,25 @@ def test_publish_says_not_live_when_the_site_never_updates():
     text = "\n".join(lines)
     assert "LIVE —" not in text
     assert "still served the old page" in text
+
+
+def test_publish_refuses_from_a_non_production_branch():
+    lines, calls = _drive_publish([], branch="site-editor")
+    text = "\n".join(lines)
+    assert "FAILED" in text
+    assert "site-editor" in text
+    assert "master" in text
+    assert calls == [["git", "rev-parse", "--abbrev-ref", "HEAD"]]
+    assert not any(c[:2] == ["git", "commit"] for c in calls)
+    assert not any(c[0] == "npx" for c in calls)
+
+
+def test_publish_push_uses_dash_u_origin_head():
+    _, calls = _drive_publish([
+        (0, ""), (1, ""), (0, "committed"), (0, ""), (0, "Deployment complete!"),
+    ])
+    push_call = next(c for c in calls if c[:2] == ["git", "push"])
+    assert push_call == ["git", "push", "-u", "origin", "HEAD"]
 
 
 def _fake_handler(body: bytes):

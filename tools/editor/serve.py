@@ -92,6 +92,7 @@ def save(payload: dict) -> list[str]:
 
 
 LIVE_URL = "https://thebrainstormlabs.com/"
+BRANCH = "master"  # the Cloudflare Pages production branch
 
 
 def run(cmd: list[str]) -> tuple[int, str]:
@@ -133,6 +134,13 @@ def wait_until_live(timeout: int = 120) -> bool:
 
 def publish(payload: dict):
     """Save, commit, push, deploy, verify. Yields progress lines as it goes."""
+    code, branch = run(["git", "rev-parse", "--abbrev-ref", "HEAD"])
+    if code or branch != BRANCH:
+        yield (f"FAILED — you are on branch '{branch}'. Publishing reaches "
+               f"{LIVE_URL} only from '{BRANCH}'. Merge your work into {BRANCH} first, "
+               "then publish. Nothing was written.")
+        return
+
     yield "Saving files…"
     for line in save(payload):
         yield f"  {line}"
@@ -154,7 +162,7 @@ def publish(payload: dict):
             yield "FAILED — commit failed, nothing deployed"
             return
         yield "Pushing to GitHub…"
-        code, out = run(["git", "push"])
+        code, out = run(["git", "push", "-u", "origin", "HEAD"])
         if code:
             yield f"  push failed: {out}"
             yield "  deploying anyway — push by hand later"
@@ -226,8 +234,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_header("Content-Type", "text/plain; charset=utf-8")
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
+        log_lines = []
         try:
             for line in publish(payload):
+                log_lines.append(line)
                 self.wfile.write((line + "\n").encode())
                 self.wfile.flush()
         except (ValueError, KeyError) as e:
@@ -237,6 +247,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
             # wrangler aren't resolvable, plus any other surprise mid-stream.
             # Headers are already sent, so failure has to be a sentinel line.
             self.wfile.write(f"FAILED — unexpected error: {e}\n".encode())
+        finally:
+            try:
+                (HERE / "last-publish.log").write_text(
+                    "\n".join(log_lines) + "\n", encoding="utf-8")
+            except OSError:
+                pass  # a failed log write must not take down the publish itself
 
     def log_message(self, fmt, *args):
         pass  # ponytail: the page shows what happened; the console does not need to
