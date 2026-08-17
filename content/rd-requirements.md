@@ -1,0 +1,6 @@
+- Windows 10/11, 64-bit
+- macOS 12 or later, Apple silicon
+- Linux, x86-64, glibc 2.35 or later
+- Any modern GPU
+- ~60 MB disk space
+- Keyboard and mouse

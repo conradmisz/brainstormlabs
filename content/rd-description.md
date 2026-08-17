@@ -1,0 +1,1 @@
+It's basically a roguelike wave shooter. You are a drone, fly around and use your primary/secondary fire to shoot at enemies. The map changes every couple of waves, and you can buy upgrades to improve your run. Collect new drone types, weapons, and cosmetics to customize your drone.

@@ -181,7 +181,7 @@ h2 {
 
 /* Contact list */
 
-.contact-list {
+.contact-list ul {
   list-style: none;
   padding: 0;
   margin: 0;
@@ -279,7 +279,7 @@ code {
   margin-bottom: 0;
 }
 
-.download-note-alt {
+.download-note > p:last-of-type {
   color: var(--muted);
 }
 
