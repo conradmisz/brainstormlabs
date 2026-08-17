@@ -1,4 +1,4 @@
-Hello & welcome to my digital portfolio! This where I post my latest projects.
+Hello & welcome to my digital portfolio! This is where I post my latest projects.
 Currently I am working on:
 
 1. **Reactor Drone** — a game and engine I have been developing for the game
