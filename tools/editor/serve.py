@@ -8,6 +8,7 @@ import hashlib
 import http.server
 import json
 import mimetypes
+import re
 import subprocess
 import time
 import urllib.request
@@ -66,8 +67,15 @@ def read_blocks() -> dict:
     return out
 
 
-def save(payload: dict) -> list[str]:
-    """Write every block's markdown and inject its html. All or nothing."""
+BUILD_STAMP_RE = re.compile(r"<!--build:[0-9a-f]*-->")
+
+
+def save(payload: dict) -> tuple[str, list[str]]:
+    """Write every block's markdown and inject its html. All or nothing.
+
+    Returns (stamp, log): a build stamp embedded in every written page (see
+    wait_until_live) and the usual log lines.
+    """
     unknown = set(payload) - set(BLOCKS)
     if unknown:
         raise ValueError(f"unknown block ids: {', '.join(sorted(unknown))}")
@@ -80,6 +88,18 @@ def save(payload: dict) -> list[str]:
         html = pages.get(page) or (SITE / page).read_text(encoding="utf-8")
         pages[page] = inject(html, block_id, data["html"])
 
+    # One stamp for the whole publish, derived from every rendered block in
+    # BLOCKS order, embedded in every page before </body>.
+    stamp = hashlib.sha256(
+        "".join(payload[b]["html"] for b in BLOCKS if b in payload).encode("utf-8")
+    ).hexdigest()[:12]
+    marker = f"<!--build:{stamp}-->"
+    for page, html in pages.items():
+        if BUILD_STAMP_RE.search(html):
+            pages[page] = BUILD_STAMP_RE.sub(marker, html)
+        else:
+            pages[page] = html.replace("</body>", marker + "\n</body>", 1)
+
     CONTENT.mkdir(exist_ok=True)
     log = []
     for block_id, md in mds.items():
@@ -88,7 +108,7 @@ def save(payload: dict) -> list[str]:
         (SITE / page).write_text(html, encoding="utf-8")
         log.append(f"wrote site/{page}")
     log.append(f"wrote {len(payload)} markdown files")
-    return log
+    return stamp, log
 
 
 LIVE_URL = "https://thebrainstormlabs.com/"
@@ -108,10 +128,15 @@ def _page_url(page: str) -> str:
     return LIVE_URL + page
 
 
-def wait_until_live(timeout: int = 120) -> bool:
-    """Poll the live site until every page in BLOCKS serves what we just wrote."""
+def wait_until_live(stamp: str, timeout: int = 120) -> bool:
+    """Poll the live site until every page in BLOCKS serves this publish's stamp.
+
+    Cloudflare rewrites the HTML at the edge (e.g. email obfuscation), so the
+    served bytes never equal the local file byte-for-byte. The <!--build:ID-->
+    comment survives those rewrites intact, so match on that instead.
+    """
     pages = sorted({page for page, _label in BLOCKS.values()})
-    want = {page: hashlib.sha256((SITE / page).read_bytes()).hexdigest() for page in pages}
+    marker = f"<!--build:{stamp}-->"
     pending = set(pages)
     deadline = time.monotonic() + timeout
     attempt = 0
@@ -123,7 +148,8 @@ def wait_until_live(timeout: int = 120) -> bool:
                     f"{_page_url(page)}?_={attempt}", headers={"Cache-Control": "no-cache"}
                 )
                 with urllib.request.urlopen(req, timeout=10) as r:
-                    if hashlib.sha256(r.read()).hexdigest() == want[page]:
+                    body = r.read().decode("utf-8", errors="replace")
+                    if marker in body:
                         pending.discard(page)
             except OSError:
                 pass  # site briefly 5xx-ing mid-deploy is normal; keep polling
@@ -142,7 +168,8 @@ def publish(payload: dict):
         return
 
     yield "Saving files…"
-    for line in save(payload):
+    stamp, log = save(payload)
+    for line in log:
         yield f"  {line}"
 
     code, out = run(["git", "add", "-A", "content", "site"])
@@ -161,13 +188,14 @@ def publish(payload: dict):
         if code:
             yield "FAILED — commit failed, nothing deployed"
             return
-        yield "Pushing to GitHub…"
-        code, out = run(["git", "push", "-u", "origin", "HEAD"])
-        if code:
-            yield f"  push failed: {out}"
-            yield "  deploying anyway — push by hand later"
-        else:
-            yield "  pushed to github.com/conradmisz/brainstormlabs"
+
+    yield "Pushing to GitHub…"
+    code, out = run(["git", "push", "-u", "origin", "HEAD"])
+    if code:
+        yield f"  push failed: {out}"
+        yield "  deploying anyway — push by hand later"
+    else:
+        yield "  pushed to github.com/conradmisz/brainstormlabs"
 
     yield "Deploying to Cloudflare Pages… (this is the slow bit)"
     code, out = run(["npx", "wrangler", "pages", "deploy", "site/",
@@ -178,7 +206,7 @@ def publish(payload: dict):
         return
 
     yield "Waiting for the change to go live…"
-    if wait_until_live():
+    if wait_until_live(stamp):
         yield f"LIVE — {LIVE_URL} is serving your changes now."
     else:
         yield (f"Deployed, but {LIVE_URL} still served the old page after 2 minutes. "

@@ -115,6 +115,83 @@ def test_save_missing_md_raises_and_writes_nothing():
             serve.CONTENT, serve.SITE = orig_content, orig_site
 
 
+def _site_with_markers():
+    return (
+        "<html><body>\n"
+        "<!--edit:intro-heading--><!--/edit:intro-heading-->\n"
+        "<!--edit:intro-body--><!--/edit:intro-body-->\n"
+        "</body></html>"
+    )
+
+
+def _rd_site_with_markers():
+    return (
+        "<html><body>\n"
+        "<!--edit:rd-description--><!--/edit:rd-description-->\n"
+        "</body></html>"
+    )
+
+
+def _with_temp_site_and_content():
+    """Context manager-ish helper: point serve.CONTENT/SITE at a fresh temp dir
+    seeded with both pages, yielding (content_dir, site_dir), restoring after."""
+    import contextlib
+
+    @contextlib.contextmanager
+    def _cm():
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            content_dir, site_dir = tmp / "content", tmp / "site"
+            content_dir.mkdir()
+            site_dir.mkdir()
+            (site_dir / "reactor-drone").mkdir()
+            (site_dir / "index.html").write_text(_site_with_markers(), encoding="utf-8")
+            (site_dir / "reactor-drone" / "index.html").write_text(
+                _rd_site_with_markers(), encoding="utf-8")
+            orig_content, orig_site = serve.CONTENT, serve.SITE
+            serve.CONTENT, serve.SITE = content_dir, site_dir
+            try:
+                yield content_dir, site_dir
+            finally:
+                serve.CONTENT, serve.SITE = orig_content, orig_site
+
+    return _cm()
+
+
+def test_save_embeds_one_build_stamp_in_every_written_page():
+    with _with_temp_site_and_content() as (_content_dir, site_dir):
+        payload = {
+            "intro-heading": {"md": "h", "html": "<h1>h</h1>"},
+            "rd-description": {"md": "d", "html": "<p>d</p>"},
+        }
+        stamp, log = serve.save(payload)
+        assert len(stamp) == 12
+        assert all(c in "0123456789abcdef" for c in stamp)
+        marker = f"<!--build:{stamp}-->"
+        home = (site_dir / "index.html").read_text(encoding="utf-8")
+        rd = (site_dir / "reactor-drone" / "index.html").read_text(encoding="utf-8")
+        assert home.count(marker) == 1
+        assert rd.count(marker) == 1
+        assert any(line == "wrote site/index.html" for line in log)
+
+
+def test_save_twice_same_content_same_stamp_no_accumulation():
+    with _with_temp_site_and_content() as (_content_dir, site_dir):
+        payload = {"intro-heading": {"md": "h", "html": "<h1>h</h1>"}}
+        stamp1, _ = serve.save(payload)
+        stamp2, _ = serve.save(payload)
+        assert stamp1 == stamp2
+        home = (site_dir / "index.html").read_text(encoding="utf-8")
+        assert home.count(f"<!--build:{stamp1}-->") == 1
+
+
+def test_save_changing_block_html_changes_stamp():
+    with _with_temp_site_and_content() as (_content_dir, _site_dir):
+        stamp1, _ = serve.save({"intro-heading": {"md": "h", "html": "<h1>h</h1>"}})
+        stamp2, _ = serve.save({"intro-heading": {"md": "h2", "html": "<h1>h2</h1>"}})
+        assert stamp1 != stamp2
+
+
 def _drive_publish(run_results, live=True, saved=("wrote site/index.html",), branch="master"):
     """Run publish() with save/run/wait_until_live stubbed. Returns the yielded lines.
 
@@ -125,7 +202,7 @@ def _drive_publish(run_results, live=True, saved=("wrote site/index.html",), bra
     calls = []
     results = [(0, branch)] + list(run_results)
     real = (serve.save, serve.run, serve.wait_until_live)
-    serve.save = lambda payload: list(saved)
+    serve.save = lambda payload: ("stamp123456", list(saved))
     serve.run = lambda cmd: (calls.append(cmd), results.pop(0))[1]
     serve.wait_until_live = lambda *a, **k: live
     try:
@@ -156,32 +233,53 @@ def test_page_url_for_nested_page_is_a_directory_url():
 
 def test_wait_until_live_requires_every_page_to_match():
     """A publish that only edits rd-* blocks must not go LIVE just because
-    site/index.html (untouched) happens to already match the CDN."""
-    with tempfile.TemporaryDirectory() as tmp:
-        site_dir = Path(tmp) / "site"
-        (site_dir / "reactor-drone").mkdir(parents=True)
-        (site_dir / "index.html").write_bytes(b"home")
-        (site_dir / "reactor-drone" / "index.html").write_bytes(b"rd-new")
+    site/index.html (untouched) already has the stamp and reactor-drone doesn't."""
+    stamp = "deadbeef1234"
+    marker = f"<!--build:{stamp}-->"
+    orig_urlopen = serve.urllib.request.urlopen
+    try:
+        def home_matches_rd_stale(req, timeout=10):
+            if "reactor-drone" in req.full_url:
+                body = b"<html><body>rd-OLD, no stamp here</body></html>"
+            else:
+                body = f"<html><body>home {marker}</body></html>".encode()
+            return _Resp(body)
 
-        orig_site, orig_urlopen = serve.SITE, serve.urllib.request.urlopen
-        serve.SITE = site_dir
-        try:
-            def home_matches_rd_stale(req, timeout=10):
-                body = b"home" if "reactor-drone" not in req.full_url else b"rd-OLD"
-                return _Resp(body)
+        def all_match(req, timeout=10):
+            body = f"<html><body>page {marker}</body></html>".encode()
+            return _Resp(body)
 
-            def all_match(req, timeout=10):
-                body = b"home" if "reactor-drone" not in req.full_url else b"rd-new"
-                return _Resp(body)
+        serve.urllib.request.urlopen = home_matches_rd_stale
+        assert serve.wait_until_live(stamp, timeout=1) is False
 
-            serve.urllib.request.urlopen = home_matches_rd_stale
-            assert serve.wait_until_live(timeout=1) is False
+        serve.urllib.request.urlopen = all_match
+        assert serve.wait_until_live(stamp, timeout=1) is True
+    finally:
+        serve.urllib.request.urlopen = orig_urlopen
 
-            serve.urllib.request.urlopen = all_match
-            assert serve.wait_until_live(timeout=1) is True
-        finally:
-            serve.SITE = orig_site
-            serve.urllib.request.urlopen = orig_urlopen
+
+def test_wait_until_live_matches_stamp_not_byte_equality():
+    """The served body never equals the local file (Cloudflare rewrites mailto:
+    links and injects a decode script), so matching must be on the stamp
+    comment alone, tolerant of extra injected markup around it."""
+    stamp = "cafef00dbeef"
+    marker = f"<!--build:{stamp}-->"
+    orig_urlopen = serve.urllib.request.urlopen
+    try:
+        def cdn_rewritten_body(req, timeout=10):
+            body = (
+                "<html><body>"
+                f"{marker}"
+                '<a href="/cdn-cgi/l/email-protection#aac9c5c4d8">[email&#160;protected]</a>'
+                '<script src="/cdn-cgi/scripts/xyz/email-decode.min.js"></script>'
+                "</body></html>"
+            ).encode("utf-8")
+            return _Resp(body)
+
+        serve.urllib.request.urlopen = cdn_rewritten_body
+        assert serve.wait_until_live(stamp, timeout=1) is True
+    finally:
+        serve.urllib.request.urlopen = orig_urlopen
 
 
 def test_publish_reports_each_phase_then_live():
@@ -253,6 +351,32 @@ def test_publish_push_uses_dash_u_origin_head():
     ])
     push_call = next(c for c in calls if c[:2] == ["git", "push"])
     assert push_call == ["git", "push", "-u", "origin", "HEAD"]
+
+
+def test_publish_pushes_exactly_once_when_there_was_something_to_commit():
+    _, calls = _drive_publish([
+        (0, ""), (1, ""), (0, "committed"), (0, ""), (0, "Deployment complete!"),
+    ])
+    push_calls = [c for c in calls if c[:2] == ["git", "push"]]
+    assert len(push_calls) == 1
+
+
+def test_publish_pushes_when_nothing_to_commit():
+    """Bug 2: master ended up 17 commits ahead of origin because push only ran
+    inside the 'there is something to commit' branch. A publish with no copy
+    changes must still push whatever local commits already exist."""
+    lines, calls = _drive_publish([
+        (0, ""),            # git add
+        (0, ""),            # git diff --cached --quiet -> nothing to commit
+        (0, ""),            # git push
+        (0, "Deployment complete!"),  # wrangler
+    ])
+    text = "\n".join(lines)
+    assert "Nothing to commit" in text
+    assert not any(c[:2] == ["git", "commit"] for c in calls)
+    push_calls = [c for c in calls if c[:2] == ["git", "push"]]
+    assert push_calls == [["git", "push", "-u", "origin", "HEAD"]]
+    assert calls[-1][:4] == ["npx", "wrangler", "pages", "deploy"]
 
 
 def _fake_handler(body: bytes):
