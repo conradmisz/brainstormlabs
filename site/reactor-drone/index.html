@@ -25,8 +25,8 @@
     <p class="subtitle">Early prototype build</p>
     <div class="prose">
       <!--edit:rd-description-->
-      <p>A top-down neon arena survival shooter built in C++17 and SDL3 on a hand-rolled ECS engine. You fly a maintenance drone inside a reactor, mouse-aiming against ring-spawned waves, banking credits from loot and spending them between waves on permanent upgrades. A 50-wave run spans nine arenas across four themes — Core, Foundry, Bio-lab, and Prism — ending in Singularity, a black-hole map the final boss transforms the arena into. Bosses appear every 10 waves, themed per arena; killing one grants a choice of three active abilities. Two difficulties are available.</p>
-      <!--/edit:rd-description-->
+<p>It&#39;s basically a roguelike wave shooter. You are a drone, fly around and use your primary/secondary fire to shoot at enemies. The map changes every couple of waves, and you can buy upgrades to improve your run. Collect new drone types, weapons, and cosmetics to customize your drone.</p>
+<!--/edit:rd-description-->
     </div>
   </section>
 
@@ -49,27 +49,28 @@
     <div class="download-note">
       <strong class="download-note-title">Attention Mac users</strong>
       <!--edit:rd-mac-note-->
-      <p>macOS will refuse to open this the first time, saying &ldquo;Apple could not verify
-        &lsquo;ReactorDrone&rsquo; is free of malware.&rdquo; That is not a warning about the game
-        &mdash; Apple charges $99/yr for the developer certificate that suppresses it, and this
-        build does not have one.</p>
-      <p>To open it:</p>
-      <ol>
-        <li>Click <strong>Done</strong> on the warning. Do not click Move to Trash.</li>
-        <li>Open <strong>System Settings</strong> &rarr; <strong>Privacy &amp; Security</strong>.</li>
-        <li>Scroll down to the line saying ReactorDrone was blocked, and click
-          <strong>Open Anyway</strong>.</li>
-        <li>Confirm when prompted. The game opens, and you only do this once.</li>
-      </ol>
-      <p>Prefer the terminal? Run
-        <code>xattr -dr com.apple.quarantine ReactorDrone.app</code> instead.
-        Right-click &rarr; Open no longer works on macOS Sequoia and later.</p>
-      <!--/edit:rd-mac-note-->
+<p>macOS will refuse to open this the first time, saying “Apple could not verify
+‘ReactorDrone’ is free of malware.” That is not a warning about the game — Apple
+charges $99/yr for the developer certificate that suppresses it, and this build
+does not have one.</p>
+<p>To open it:</p>
+<ol>
+<li>Click <strong>Done</strong> on the warning. Do not click Move to Trash.</li>
+<li>Open <strong>System Settings</strong> → <strong>Privacy &amp; Security</strong>.</li>
+<li>Scroll down to the line saying ReactorDrone was blocked, and click <strong>Open Anyway</strong>.</li>
+<li>Confirm when prompted. The game opens, and you only do this once.</li>
+</ol>
+<p>Prefer the terminal? Run <code>xattr -dr com.apple.quarantine ReactorDrone.app</code>
+instead. Right-click → Open no longer works on macOS Sequoia and later.</p>
+<!--/edit:rd-mac-note-->
     </div>
     <div class="prose">
       <!--edit:rd-download-footnote-->
-      <p>All three builds are early prototypes. The macOS bundle is not notarized &mdash; see Installing below. A portable Windows zip is also on the <a href="https://github.com/conradmisz/reactor-drone/releases/tag/v2.2.0">release page</a>. Intel Macs are not supported.</p>
-      <!--/edit:rd-download-footnote-->
+<p>All three builds are early prototypes. The macOS bundle is not notarized — see
+Installing below. A portable Windows zip is also on the
+<a href="https://github.com/conradmisz/reactor-drone/releases/tag/v2.2.0">release page</a>.
+Intel Macs are not supported.</p>
+<!--/edit:rd-download-footnote-->
     </div>
   </section>
 
@@ -77,8 +78,9 @@
     <h2>Stay up to date</h2>
     <div class="prose">
       <!--edit:rd-mailing-list-->
-      <p>One mail per release, so you know when there is a new build to grab. Nothing else, and every mail carries an unsubscribe link.</p>
-      <!--/edit:rd-mailing-list-->
+<p>One mail per release, so you know when there is a new build to grab. Nothing
+else, and every mail carries an unsubscribe link.</p>
+<!--/edit:rd-mailing-list-->
     </div>
     <form class="signup" id="signup" novalidate>
       <label class="visually-hidden" for="signup-email">Email address</label>
@@ -132,8 +134,12 @@
     <h2>How to play</h2>
     <div class="prose">
       <!--edit:rd-how-to-play-->
-      <p>Each run spawns waves of enemies in rings around the arena. Between waves an upgrade panel opens, with a full shop appearing every fifth wave, covering eight upgrade lines: hull, shields, thrusters, fire rate, damage, extra shots, projectile range, and ricochet. Score accumulates across runs and unlocks new ships. Runs can be saved from the pause menu.</p>
-      <!--/edit:rd-how-to-play-->
+<p>Each run spawns waves of enemies in rings around the arena. Between waves an
+upgrade panel opens, with a full shop appearing every fifth wave, covering eight
+upgrade lines: hull, shields, thrusters, fire rate, damage, extra shots,
+projectile range, and ricochet. Score accumulates across runs and unlocks new
+ships. Runs can be saved from the pause menu.</p>
+<!--/edit:rd-how-to-play-->
     </div>
     <table class="controls">
       <tbody>
@@ -151,12 +157,17 @@
     <h2>Installing</h2>
     <div class="prose">
       <!--edit:rd-installing-->
-      <ul>
-      <li><strong>Windows</strong> &mdash; run the installer. It is unsigned, so SmartScreen may warn you: click "More info", then "Run anyway". Installs to Program Files with a Start-menu shortcut; uninstall from Settings &rarr; Apps.</li>
-      <li><strong>macOS</strong> &mdash; unzip and drag ReactorDrone.app to Applications. It is not notarized, so the first launch is blocked. Click <strong>Done</strong> on the warning, then open <strong>System Settings &rarr; Privacy &amp; Security</strong>, scroll down, and click <strong>Open Anyway</strong>. Right-click &rarr; Open no longer works on macOS Sequoia and later.</li>
-      <li><strong>Linux</strong> &mdash; extract the tarball and run <code>./run.sh</code>.</li>
-      </ul>
-      <!--/edit:rd-installing-->
+<ul>
+<li><strong>Windows</strong> — run the installer. It is unsigned, so SmartScreen may warn you:
+click &quot;More info&quot;, then &quot;Run anyway&quot;. Installs to Program Files with a
+Start-menu shortcut; uninstall from Settings → Apps.</li>
+<li><strong>macOS</strong> — unzip and drag ReactorDrone.app to Applications. It is not
+notarized, so the first launch is blocked. Click <strong>Done</strong> on the warning, then
+open <strong>System Settings → Privacy &amp; Security</strong>, scroll down, and click
+<strong>Open Anyway</strong>. Right-click → Open no longer works on macOS Sequoia and later.</li>
+<li><strong>Linux</strong> — extract the tarball and run <code>./run.sh</code>.</li>
+</ul>
+<!--/edit:rd-installing-->
     </div>
   </section>
 
@@ -164,15 +175,15 @@
     <h2>System requirements</h2>
     <div class="prose">
       <!--edit:rd-requirements-->
-      <ul>
-      <li>Windows 10/11, 64-bit</li>
-      <li>macOS 12 or later, Apple silicon</li>
-      <li>Linux, x86-64, glibc 2.35 or later</li>
-      <li>Any modern GPU</li>
-      <li>~60 MB disk space</li>
-      <li>Keyboard and mouse</li>
-      </ul>
-      <!--/edit:rd-requirements-->
+<ul>
+<li>Windows 10/11, 64-bit</li>
+<li>macOS 12 or later, Apple silicon</li>
+<li>Linux, x86-64, glibc 2.35 or later</li>
+<li>Any modern GPU</li>
+<li>~60 MB disk space</li>
+<li>Keyboard and mouse</li>
+</ul>
+<!--/edit:rd-requirements-->
     </div>
   </section>
 
